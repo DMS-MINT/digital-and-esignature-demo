@@ -22,7 +22,7 @@ def feedback_create(*, current_user: Member, comment: str, e_signature):
         similarity = compare_images(image1_path=reference_signature_full_path, image2_path=uploaded_signature_path)
 
         if similarity <= 80:
-            raise PermissionDenied("Signature verification failed. You are not authorized to create feedback.")
+            raise PermissionDenied(f"Signature verification failed. your signature similarity is {similarity}.")
 
         Feedback.objects.create(author=current_user, comment=comment, e_signature=e_signature)
 
