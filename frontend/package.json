@@ -13,8 +13,8 @@
 		"start": "next start",
 		"lint": "next lint",
 		"prettier": "prettier --write .",
-		"postinstall": "husky install",
-		"prepare": "husky install"
+		"postinstall": "husky",
+		"prepare": "husky"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^3.9.0",
@@ -28,6 +28,7 @@
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.1",
 		"input-otp": "^1.2.4",
+		"jose": "^5.9.6",
 		"lucide-react": "^0.404.0",
 		"next": "14.2.4",
 		"react": "^18",

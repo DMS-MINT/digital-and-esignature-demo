@@ -29,14 +29,14 @@ export default function Feedbacks() {
 	const { data } = useQuery<FeedbackType[], Error>({
 		queryKey: ["feedback"],
 		queryFn: async () => {
-		  try {
-			const response = await axiosInstance.get("feedbacks/"); 
-			return response.data.feedbacks as FeedbackType[];
-		  } catch (error: any) {
-			throw new Error(`Error fetching feedbacks: ${error?.message || error}`);
-		  }
+			try {
+				const response = await axiosInstance.get("feedbacks/withkey/");
+				return response.data.feedbacks as FeedbackType[];
+			} catch (error: any) {
+				throw new Error(`Error fetching feedbacks: ${error?.message || error}`);
+			}
 		},
-	  });
+	});
 	const verifyMutation = useMutation({
 		mutationKey: ["validate"],
 		mutationFn: async (feedback_id: string) => {

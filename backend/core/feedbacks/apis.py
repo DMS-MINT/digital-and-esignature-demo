@@ -87,9 +87,11 @@ class FeedbackCreateApi(APIView):
 
     serializer_class = InputSerializer
 
+
     def post(self, request) -> Response:
+        print(f"request : {request.user}")
         # current_user = Member.objects.objects.filter(full_name=request.user)
-        current_user = Member.objects.all()[0]
+        current_user = Member.objects.all()[2]
         print(current_user)
         input_serializer = self.InputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
