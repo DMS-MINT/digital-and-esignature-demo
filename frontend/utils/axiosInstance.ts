@@ -7,6 +7,20 @@ const axiosInstance: AxiosInstance = axios.create({
 	headers: {
 		"Content-Type": "application/json",
 	},
-});
+	withCredentials: true,  // Ensures that cookies (sessionid and csrftoken) are sent with requests
+  });
+
+//   if (typeof window !== "undefined") {
+// 	const csrftoken = document.cookie.match(/csrftoken=([\w-]+)/)?.[1];
+  
+// 	axiosInstance.interceptors.request.use((config) => {
+// 	  // Only add CSRF token to state-changing requests (e.g., POST, PUT, DELETE)
+// 	  if (csrftoken && ["POST", "PUT", "DELETE"].includes(config.method?.toUpperCase() || "")) {
+// 		config.headers["X-CSRFToken"] = csrftoken;
+// 	  }
+// 	  return config;
+// 	});
+//   }
+// axiosInstance.defaults.withCredentials = true;
 
 export default axiosInstance;

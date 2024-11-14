@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from core.common.utils import inline_serializer
 from core.users.models import Member
-
+from django.apps import apps
 from .models import Feedback
 from .services import check_similarity, feedback_create
 
@@ -53,6 +53,33 @@ class FeedbackListApi(APIView):
         return Response(data=response_data, status=http_status.HTTP_200_OK)
 
 
+class FeedbackListKeyApi(APIView):
+    class OutputSerializer(serializers.Serializer):
+        id = serializers.UUIDField()
+        author = inline_serializer(
+            fields={"full_name": serializers.CharField()},
+        )
+        comment = serializers.CharField()
+        e_signature = serializers.URLField()
+
+    def get(self, request) -> Response:
+        print(f"request : {request.user}")
+        Feedback = apps.get_model('feedbacks', 'Feedback')
+        PrivateKeyPermission = apps.get_model('feedbacks', 'PrivateKeyPermission')
+
+        # Get feedbacks authored by the requesting user
+        authored_feedbacks = Feedback.objects.filter(author=request.user)
+
+        # Get feedbacks where the user has access through PrivateKeyPermission
+        shared_feedback_ids = PrivateKeyPermission.objects.filter(user=request.user).values_list('feedback_id', flat=True)
+        shared_feedbacks = Feedback.objects.filter(id__in=shared_feedback_ids)
+        feedbacks = authored_feedbacks | shared_feedbacks
+        output_serializer = self.OutputSerializer(feedbacks, many=True)
+        response_data = {"feedbacks": output_serializer.data}
+
+        return Response(data=response_data, status=http_status.HTTP_200_OK)
+    
+
 class FeedbackCreateApi(APIView):
     class InputSerializer(serializers.Serializer):
         comment = serializers.CharField()
@@ -61,17 +88,14 @@ class FeedbackCreateApi(APIView):
     serializer_class = InputSerializer
 
     def post(self, request) -> Response:
+        # current_user = Member.objects.objects.filter(full_name=request.user)
         current_user = Member.objects.all()[0]
         print(current_user)
         input_serializer = self.InputSerializer(data=request.data)
-
         input_serializer.is_valid(raise_exception=True)
-
         try:
             message = feedback_create(current_user=current_user, **input_serializer.validated_data)
-
             response_data = {"message": message}
-
             return Response(data=response_data, status=http_status.HTTP_200_OK)
 
         except ValidationError as ve:

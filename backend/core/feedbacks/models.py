@@ -149,3 +149,13 @@ class Feedback(BaseModel):
         except Exception as e:
             print(f"Tampering detected: Verification failed as expected: {e}")
             return True
+
+class PrivateKeyPermission(models.Model):
+    feedback = models.ForeignKey(Feedback, on_delete=models.CASCADE)  # The feedback document being shared
+    user = models.ForeignKey(Member, on_delete=models.CASCADE)  # The user who has been granted access
+    granted_by = models.ForeignKey(Member, related_name="permissions_granted", on_delete=models.CASCADE)  # The user who granted access
+    class Meta:
+        unique_together = ('feedback', 'user')  # Ensure that a user can only be granted access once per feedback
+
+    def __str__(self):
+        return f"{self.user.full_name} has access to private key of {self.feedback.id} granted by {self.granted_by.full_name}"

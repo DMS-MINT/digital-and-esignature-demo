@@ -32,7 +32,7 @@ class LoginApi(APIView):
         login(request, user)
 
         session_key = request.session.session_key
-
+        print(f"session: {session_key}")
         return Response(
             data={
                 "session": session_key,
