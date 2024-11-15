@@ -9,24 +9,35 @@ const SESSION_NAME = "DemoSession";
 const secretKey = "secret";
 const key = new TextEncoder().encode(secretKey);
 
-interface Feedback {
-	id: number;
-	content: string;
+export type AuthorType = {
+	full_name: string;
+};
+export type FeedbackType = {
+	id: string;
+	author: AuthorType;
+	comment: string;
+};
+
+
+export async function setEmail(email: string) {
+	cookies().set("email", email, { httpOnly: true });
 }
 
-interface FeedbackResponse {
-	ok: boolean;
-	feedbacks?: Feedback[];
-	message?: string;
+export async function getEmail() {
+	const email = cookies().get("email")?.value;
+	if (!email) throw new Error("Email not set");
+	return email;
 }
+
 
 export async function signIn(credentials: { email: string; password: string }) {
 	try {
 		console.log(credentials);
 		const response = await axiosInstance.post("/auth/login/", credentials);
-
+		
 		if (response.data && response.data.session) {
 			console.log("Login successful! Session ID:", response.data.session);
+			await setEmail(credentials.email);
 
 			// Session data
 			const sessionId = response.data.session;
@@ -65,24 +76,27 @@ export async function signOut() {
 	}
 }
 
-export async function fetchFeedbackWithKey(): Promise<FeedbackResponse> {
+export async function fetchFeedbackWithKey(): Promise<{ ok: boolean; feedbacks?: FeedbackType[]; message?: string }> {
+	const email: string = await getEmail();
 	try {
-		const response = await axiosInstance.get("/feedbacks/withkey/");
-
-		if (response.data && Array.isArray(response.data.feedbacks)) {
-			console.log("Feedback with key:", response.data.feedbacks);
-			return { ok: true, feedbacks: response.data.feedbacks };
-		} else {
-			return { ok: false, message: "No feedback found." };
-		}
+	  const response = await axiosInstance.get("/feedbacks/withkey/", {
+		params: { email: email },
+	  });
+  
+	  if (response.data && Array.isArray(response.data.feedbacks)) {
+		return { ok: true, feedbacks: response.data.feedbacks };
+	  } else {
+		return { ok: false, message: "No feedback found." };
+	  }
 	} catch (error: any) {
-		console.error("Failed to fetch feedback with key:", error);
-		return {
-			ok: false,
-			message: error.response?.data?.message || "እባክዎ በመልእክት ችግኝ አጋጣሚ!",
-		};
+	  console.error("Failed to fetch feedback with key:", error);
+	  return {
+		ok: false,
+		message: error.response?.data?.message || "እባክዎ በመልእክት ችግኝ አጋጣሚ!",
+	  };
 	}
-}
+  }
+  
 export async function encrypt(payload: any) {
 	return await new SignJWT(payload)
 		.setProtectedHeader({ alg: "HS256" })

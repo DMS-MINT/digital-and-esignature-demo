@@ -12,7 +12,7 @@ import { axiosInstance } from "@/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
-// import { fetchFeedbackWithKey } from "@/actions/auth/action";
+import { fetchFeedbackWithKey } from "@/actions/auth/action";
 
 export type AuthorType = {
 	full_name: string;
@@ -30,12 +30,18 @@ export default function Feedbacks() {
 		queryKey: ["feedback"],
 		queryFn: async () => {
 			try {
-				const response = await axiosInstance.get("feedbacks/withkey/");
-				return response.data.feedbacks as FeedbackType[];
+			  const response = await fetchFeedbackWithKey();
+		  
+			  if (response.ok) {
+				return response.feedbacks as FeedbackType[]; 
+			  } else {
+				throw new Error(response.message || "Error fetching feedbacks");
+			  }
 			} catch (error: any) {
-				throw new Error(`Error fetching feedbacks: ${error?.message || error}`);
+			  throw new Error(`Error fetching feedbacks: ${error?.message || error}`);
 			}
-		},
+		  },
+		  
 	});
 	const verifyMutation = useMutation({
 		mutationKey: ["validate"],

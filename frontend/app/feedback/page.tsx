@@ -1,7 +1,8 @@
+import { fetchFeedbackWithKey } from "@/actions/auth/action";
 import { FeedbackForm, Feedbacks } from "@/components/feedback/";
-import { FeedbackType } from "@/components/feedback/Feedbacks";
+// import { FeedbackType } from "@/components/feedback/Feedbacks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { axiosInstance } from "@/utils";
+// import { axiosInstance } from "@/utils";
 import {
 	HydrationBoundary,
 	QueryClient,
@@ -12,15 +13,7 @@ export default async function Page(){
 	const queryClient = new QueryClient();
 	await queryClient.prefetchQuery({
 		queryKey: ["feedbacks"],
-		// queryFn: () => fetchFeedbackWithKey(),
-		queryFn: async () => {
-            try {
-              const response = await axiosInstance.get("feedbacks/withkey/");  
-              return response.data.feedbacks as FeedbackType[];
-            } catch (error: any) {
-              throw new Error(`Error fetching feedbacks: ${error?.message || error}`);
-            }
-          },
+		queryFn: () => fetchFeedbackWithKey(),
 	});
 
 	return (

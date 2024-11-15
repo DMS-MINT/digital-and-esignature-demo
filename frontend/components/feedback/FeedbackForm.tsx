@@ -27,6 +27,7 @@ import { AxiosError } from "axios";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Canvas } from "../shared";
+import { getEmail } from "@/actions/auth/action";
 
 const formSchema = z.object({
 	comment: z.string().min(2),
@@ -42,8 +43,12 @@ export default function FeedbackForm() {
 	const { toast } = useToast();
 	const { mutate } = useMutation({
 		mutationFn: async (newFeedback: FeedbackType) => {
+			const email: string = await getEmail();
 			try {
-				const response = await axiosInstance.post("feedbacks/create/", newFeedback);
+				const response = await axiosInstance.post("feedbacks/create/",{
+					...newFeedback,
+					email: email,    
+				  });
 				toast({
 					description: response.data.message,
 				});
