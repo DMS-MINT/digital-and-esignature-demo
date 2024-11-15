@@ -54,6 +54,9 @@ class FeedbackListApi(APIView):
 
 
 class FeedbackListKeyApi(APIView):
+    class InputSerializer(serializers.Serializer):
+        email = serializers.EmailField()
+
     class OutputSerializer(serializers.Serializer):
         id = serializers.UUIDField()
         author = inline_serializer(
@@ -63,40 +66,77 @@ class FeedbackListKeyApi(APIView):
         e_signature = serializers.URLField()
 
     def get(self, request) -> Response:
-        print(f"request : {request.user}")
+        # Validate the email parameter
+        serializer = self.InputSerializer(data=request.query_params)
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+        else:
+            return Response(
+                {"detail": "Invalid email parameter."},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Fetch the author/member by email
+        try:
+            author = Member.objects.get(email=email)
+        except Member.DoesNotExist:
+            return Response(
+                {"detail": "Member with the given email does not exist."},
+                status=http_status.HTTP_404_NOT_FOUND,
+            )
+
+        # Fetch feedbacks authored by the user or shared with them
         Feedback = apps.get_model('feedbacks', 'Feedback')
         PrivateKeyPermission = apps.get_model('feedbacks', 'PrivateKeyPermission')
+        authored_feedbacks = Feedback.objects.filter(author=author)
 
-        # Get feedbacks authored by the requesting user
-        authored_feedbacks = Feedback.objects.filter(author=request.user)
-
-        # Get feedbacks where the user has access through PrivateKeyPermission
-        shared_feedback_ids = PrivateKeyPermission.objects.filter(user=request.user).values_list('feedback_id', flat=True)
+        shared_feedback_ids = PrivateKeyPermission.objects.filter(user=author).values_list('feedback_id', flat=True)
         shared_feedbacks = Feedback.objects.filter(id__in=shared_feedback_ids)
         feedbacks = authored_feedbacks | shared_feedbacks
+
+        # Serialize the feedbacks
         output_serializer = self.OutputSerializer(feedbacks, many=True)
         response_data = {"feedbacks": output_serializer.data}
 
-        return Response(data=response_data, status=http_status.HTTP_200_OK)
-    
+        return Response(data=response_data, status=http_status.HTTP_200_OK) 
 
 class FeedbackCreateApi(APIView):
     class InputSerializer(serializers.Serializer):
+        email = serializers.EmailField()
         comment = serializers.CharField()
-        e_signature = Base64ImageField()
-
-    serializer_class = InputSerializer
-
+        e_signature = Base64ImageField()  # Assuming custom field for base64-encoded image
 
     def post(self, request) -> Response:
-        print(f"request : {request.user}")
-        # current_user = Member.objects.objects.filter(full_name=request.user)
-        current_user = Member.objects.all()[2]
-        print(current_user)
+        # Initialize serializer with request data
+        print(f"requested data: {request.data}")
         input_serializer = self.InputSerializer(data=request.data)
-        input_serializer.is_valid(raise_exception=True)
+
+        # Validate the data
+        if not input_serializer.is_valid():
+            return Response(
+                {"error": "Invalid input", "details": input_serializer.errors},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Access validated data after validation
+        email = input_serializer.validated_data["email"]
+        comment = input_serializer.validated_data["comment"]
+        e_signature = input_serializer.validated_data["e_signature"]
+
+        # Fetch the current user based on the email from validated data
         try:
-            message = feedback_create(current_user=current_user, **input_serializer.validated_data)
+            current_user = Member.objects.get(email=email)  # Fetch member by email
+        except Member.DoesNotExist:
+            return Response(
+                {"error": "Member with the given email does not exist."},
+                status=http_status.HTTP_404_NOT_FOUND,
+            )
+
+        print(f"Current user: {current_user}")
+
+        try:
+            # Assuming feedback_create is a function that handles feedback creation
+            message = feedback_create(current_user=current_user, comment=comment, e_signature=e_signature)
             response_data = {"message": message}
             return Response(data=response_data, status=http_status.HTTP_200_OK)
 
