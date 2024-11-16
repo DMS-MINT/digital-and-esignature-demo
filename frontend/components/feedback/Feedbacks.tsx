@@ -24,6 +24,11 @@ export type FeedbackType = {
 	comment: string;
 };
 
+interface FeedbackPdfResponse {
+	pdf_url: string;
+  }
+  
+
 export default function Feedbacks() {
 	const { toast } = useToast();
 	const { data } = useQuery<FeedbackType[], Error>({
@@ -72,7 +77,24 @@ export default function Feedbacks() {
 			} catch (error: unknown) {}
 		},
 	});
-
+	
+	const feedbackPdf = useMutation<FeedbackPdfResponse, Error, string>({
+		mutationKey: ["fetchFeedbackPdf"],
+		mutationFn: async (feedback_id: string) => {
+		  const response = await axiosInstance.get(`/feedbacks/${feedback_id}/pdf/`);
+		  console.log("PDF URL fetched:", response.data); // Logs the PDF URL
+		  return response.data; 
+		},
+		onSuccess: (data) => {
+		  if (data.pdf_url) {
+			window.open(data.pdf_url, "_blank"); // Open the PDF URL in a new tab
+		  }
+		},
+		onError: (error) => {
+		  console.error("Failed to fetch the feedback PDF", error);
+		},
+	  }); 
+		  
 	return (
 		<Card className="w-[600px] h-[510px]">
 			<CardHeader>
@@ -101,6 +123,14 @@ export default function Feedbacks() {
 							>
 								Tamper
 							</Button> */}
+							<Button
+								size={"sm"}
+								variant={"default"}
+								className="bg-red-700"
+								onClick={() => feedbackPdf.mutate(id)}
+							>
+								Pdf
+							</Button> 
 							<Button
 								size={"sm"}
 								variant={"outline"}

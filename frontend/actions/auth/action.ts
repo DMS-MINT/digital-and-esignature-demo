@@ -32,7 +32,6 @@ export async function getEmail() {
 
 export async function signIn(credentials: { email: string; password: string }) {
 	try {
-		console.log(credentials);
 		const response = await axiosInstance.post("/auth/login/", credentials);
 		
 		if (response.data && response.data.session) {
