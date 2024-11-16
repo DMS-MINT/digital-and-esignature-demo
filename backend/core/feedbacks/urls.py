@@ -6,6 +6,7 @@ from .apis import (
     FeedbackCreateApi,
     FeedbackListApi,
     FeedbackListKeyApi,
+    FeedbackPdfApi,
     TamperAndVerifySignatureFeedbackApi,
     VerifySignatureApi,
 )
@@ -19,4 +20,5 @@ urlpatterns: list[URLPattern] = [
     path("check_similarity/", CheckSimilarity.as_view(), name="feedback-check_similarity"),
     path("<uuid:feedback_id>/verify", VerifySignatureApi.as_view(), name="feedback-verify"),
     path("<uuid:feedback_id>/tamper", TamperAndVerifySignatureFeedbackApi.as_view(), name="feedback-tamper-verify"),
+    path("<uuid:feedback_id>/pdf/", FeedbackPdfApi.as_view(), name="feedback-pdf"),
 ]

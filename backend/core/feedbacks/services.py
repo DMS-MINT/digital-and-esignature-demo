@@ -1,11 +1,12 @@
 import os
 import tempfile
-
+from rest_framework.response import Response
+from django.template.loader import render_to_string
+from weasyprint import HTML
+from django.core.files.storage import default_storage
 from django.conf import settings
 from rest_framework.exceptions import PermissionDenied, ValidationError
-
 from core.users.models import Member
-
 from .models import Feedback
 from .utils import compare_images
 
@@ -22,9 +23,18 @@ def feedback_create(*, current_user: Member, comment: str, e_signature):
         similarity = compare_images(image1_path=reference_signature_full_path, image2_path=uploaded_signature_path)
 
         if similarity <= 80:
-            raise PermissionDenied(f"Signature verification failed. your signature similarity is {similarity}.")
+            raise PermissionDenied(f"Signature verification failed. Your signature similarity is {similarity}.")
 
-        Feedback.objects.create(author=current_user, comment=comment, e_signature=e_signature)
+        # Create feedback only after successful signature verification
+        feedback = Feedback.objects.create(author=current_user, comment=comment, e_signature=e_signature)
+
+        # Generate PDF and handle errors
+        try:
+            pdf_url = generate_feedback_pdf(feedback_id=feedback.id)
+        except Exception as e:
+            # If PDF generation fails, delete the feedback to maintain consistency
+            feedback.delete()
+            raise ValidationError(f"PDF generation failed: {str(e)}")
 
         return "Signature verified successfully. Feedback has been created."
 
@@ -54,3 +64,40 @@ def check_similarity(*, image_1, image_2):
         image2_path = temp_file_2.name
 
     return compare_images(image1_path, image2_path)
+
+
+
+def generate_feedback_pdf(feedback_id):
+
+    feedback = Feedback.objects.get(id=feedback_id)
+    # Prepare context
+    context = {
+        "feedback": feedback,
+        "author": feedback.author.full_name,
+        "comment": feedback.comment,
+        "e_signature": feedback.e_signature.url if feedback.e_signature else None,
+    }
+    # Render the HTML template
+    html_content = render_to_string("feedback.html", context)
+    # Generate PDF from HTML
+
+    weasy_html = HTML(string=html_content, base_url=settings.STATIC_URL)
+    pdf_data = weasy_html.write_pdf()
+    
+    # Define the path to save the PDF
+    pdf_path = f"feedback_pdfs/{feedback.id}_feedback.pdf"
+    file_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+    
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    # Save the PDF to storage
+    with open(file_path, 'wb') as pdf_file:
+        pdf_file.write(pdf_data)
+    # Return the URL of the saved PDF
+    pdf_url = default_storage.url(pdf_path)
+    print("Generated PDF URL:", pdf_url)
+
+    return Response({"pdf_url": pdf_url}, status=200)
+
+
+

@@ -1,15 +1,19 @@
+import os
+from django.conf import settings
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework import status as http_status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import NotFound
 
+from django.core.files.storage import default_storage
 from core.common.utils import inline_serializer
 from core.users.models import Member
 from django.apps import apps
 from .models import Feedback
-from .services import check_similarity, feedback_create
+from .services import check_similarity, feedback_create, generate_feedback_pdf
 
 
 class CheckSimilarity(APIView):
@@ -108,7 +112,6 @@ class FeedbackCreateApi(APIView):
 
     def post(self, request) -> Response:
         # Initialize serializer with request data
-        print(f"requested data: {request.data}")
         input_serializer = self.InputSerializer(data=request.data)
 
         # Validate the data
@@ -171,3 +174,33 @@ class TamperAndVerifySignatureFeedbackApi(APIView):
         print(result)
 
         return Response(status=http_status.HTTP_200_OK)
+    
+class FeedbackPdfApi(APIView):
+    def get(self, request, feedback_id):
+        try:
+            # Step 1: Check if the Feedback exists
+            feedback = Feedback.objects.get(id=feedback_id)
+            print(f"Feedback found: {feedback}")
+
+            # Step 2: Construct the file path
+            pdf_path = f"feedback_pdfs/{feedback.id}_feedback.pdf"
+            file_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+            print(f"Constructed file path: {file_path}")
+
+            # Step 3: Verify the file exists
+            if not os.path.exists(file_path):
+                generate_feedback_pdf(feedback_id)
+
+            # Step 4: Generate the URL for the PDF
+            pdf_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{pdf_path}")
+            print(f"Generated PDF URL: {pdf_url}")
+
+
+            # Step 5: Return the PDF URL
+            return Response({"pdf_url": pdf_url}, status=200)
+
+        except Feedback.DoesNotExist:
+            raise NotFound("Feedback not found.")
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
