@@ -70,6 +70,7 @@ class Feedback(BaseModel):
             hashes.SHA256(),
         )
 
+        print(f"Generate digital signature: {self.digital_signature}")
         super().save(*args, **kwargs)
 
     def verify_signature(self):
