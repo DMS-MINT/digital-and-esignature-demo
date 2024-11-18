@@ -12,7 +12,7 @@ import { axiosInstance } from "@/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
-import { fetchFeedbackWithKey } from "@/actions/auth/action";
+import { fetchFeedbackWithKey } from "@/actions/feedback/action";
 
 export type AuthorType = {
 	full_name: string;
@@ -68,17 +68,35 @@ export default function Feedbacks() {
 			} catch (error: unknown) {}
 		},
 	});
-	const tamperMutation = useMutation({
-		mutationKey: ["validate"],
-		mutationFn: async (feedback_id: string) => {
-			try {
-				const response = await axiosInstance.get(`feedbacks/${feedback_id}/tamper`);
-				console.log(response);
-			} catch (error: unknown) {}
-		},
-	});
+
+	// const tamperMutation = useMutation({
+	// 	mutationKey: ["validate"],
+	// 	mutationFn: async (feedback_id: string) => {
+	// 		try {
+	// 			const response = await axiosInstance.put(`feedbacks/${feedback_id}/tamper`);
+	// 			console.log(response);
+	// 		} catch (error: unknown) {}
+	// 	},
+	// });
 	
 	const feedbackPdf = useMutation<FeedbackPdfResponse, Error, string>({
+		mutationKey: ["fetchFeedbackPdf"],
+		mutationFn: async (feedback_id: string) => {
+		  const response = await axiosInstance.get(`/feedbacks/${feedback_id}/pdf/`);
+		  console.log("PDF URL fetched:", response.data); // Logs the PDF URL
+		  return response.data; 
+		},
+		onSuccess: (data) => {
+		  if (data.pdf_url) {
+			window.open(data.pdf_url, "_blank"); // Open the PDF URL in a new tab
+		  }
+		},
+		onError: (error) => {
+		  console.error("Failed to fetch the feedback PDF", error);
+		},
+	  }); 
+	
+	const feedbackShare = useMutation<FeedbackPdfResponse, Error, string>({
 		mutationKey: ["fetchFeedbackPdf"],
 		mutationFn: async (feedback_id: string) => {
 		  const response = await axiosInstance.get(`/feedbacks/${feedback_id}/pdf/`);
@@ -122,7 +140,7 @@ export default function Feedbacks() {
 								onClick={() => tamperMutation.mutate(id)}
 							>
 								Tamper
-							</Button> */}
+							</Button>  */}
 							<Button
 								size={"sm"}
 								variant={"default"}
