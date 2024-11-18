@@ -21,7 +21,7 @@ class Feedback(BaseModel):
         upload_to="",
         help_text=_("Upload the author signature."),
     )
-    digital_signature = models.BinaryField(
+    digital_signature = models.TextField(
         "Digital Signature",
         editable=False,
         null=True,

@@ -30,8 +30,12 @@
             margin-top: 20px;
         }
         .signature img {
-            max-width: 150px;
-            height: auto;
+            max-width: 200px; 
+            max-height: 100px; 
+            margin-left:100px ;
+            margin-top: -50px;
+            width: auto; 
+            height: auto; 
         }
         .footer {
             margin-top: 30px;
@@ -61,13 +65,13 @@
         {% if feedback.e_signature %}
         <div class="signature">
             <p><strong>E-Signature:</strong></p>
-            <img src="{{ feedback.e_signature.url }}" alt="E-Signature" />
+            <img src="data:image/png;base64,{{ e_signature_base64 }}" />
         </div>
         {% endif %}
 
         <div class="footer">
             <!-- <p><strong>Public Key:</strong> {{ feedback.public_key }}</p> -->
-            <p>Digital Signature: {{ feedback.digital_signature|length }} bytes</p>
+            <p>Digital Signature: {{ feedback.digital_signature}}</p>
         </div>
     </div>
 

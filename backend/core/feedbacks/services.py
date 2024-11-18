@@ -1,3 +1,4 @@
+import base64
 import os
 import tempfile
 from rest_framework.response import Response
@@ -9,7 +10,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from core.users.models import Member
 from .models import Feedback
 from .utils import compare_images
-
+import shutil
+from django.core.files import File
 
 def feedback_create(*, current_user: Member, comment: str, e_signature):
     try:
@@ -26,7 +28,22 @@ def feedback_create(*, current_user: Member, comment: str, e_signature):
             raise PermissionDenied(f"Signature verification failed. Your signature similarity is {similarity}.")
 
         # Create feedback only after successful signature verification
-        feedback = Feedback.objects.create(author=current_user, comment=comment, e_signature=e_signature)
+        # feedback = Feedback.objects.create(author=current_user, comment=comment, e_signature=e_signature)
+        
+        with tempfile.NamedTemporaryFile(delete=False) as temp_signature:
+            shutil.copy(reference_signature_full_path, temp_signature.name)
+            default_signature_path = temp_signature.name
+
+        # Create feedback using the author's default signature
+        with open(default_signature_path, "rb") as signature_file:
+            feedback = Feedback.objects.create(
+            author=current_user,
+            comment=comment,
+            e_signature=File(signature_file, name=os.path.basename(reference_signature_full_path)),
+            )
+
+        # Clean up the temporary file
+        os.unlink(default_signature_path)
 
         # Generate PDF and handle errors
         try:
@@ -70,15 +87,21 @@ def check_similarity(*, image_1, image_2):
 def generate_feedback_pdf(feedback_id):
 
     feedback = Feedback.objects.get(id=feedback_id)
-    # Prepare context
+        # Ensure e_signature is properly encoded
+    e_signature_base64 = None
+    if feedback.e_signature:
+        with feedback.e_signature.open("rb") as e_signature_file:
+            e_signature_base64 = base64.b64encode(e_signature_file.read()).decode("utf-8")
+
+        # Context for the template
     context = {
         "feedback": feedback,
-        "author": feedback.author.full_name,
-        "comment": feedback.comment,
-        "e_signature": feedback.e_signature.url if feedback.e_signature else None,
+        "e_signature_base64": e_signature_base64,
     }
-    # Render the HTML template
+
+        # Render HTML content
     html_content = render_to_string("feedback.html", context)
+    print("HTML Content Rendered Successfully")
     # Generate PDF from HTML
 
     weasy_html = HTML(string=html_content, base_url=settings.STATIC_URL)

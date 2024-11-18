@@ -12,7 +12,7 @@ from django.core.files.storage import default_storage
 from core.common.utils import inline_serializer
 from core.users.models import Member
 from django.apps import apps
-from .models import Feedback
+from .models import Feedback, PrivateKeyPermission
 from .services import check_similarity, feedback_create, generate_feedback_pdf
 
 
@@ -175,6 +175,7 @@ class TamperAndVerifySignatureFeedbackApi(APIView):
 
         return Response(status=http_status.HTTP_200_OK)
     
+
 class FeedbackPdfApi(APIView):
     def get(self, request, feedback_id):
         try:
@@ -204,3 +205,59 @@ class FeedbackPdfApi(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+
+class SharePermissionView(APIView):
+    class InputSerializer(serializers.Serializer):
+        feedback_id = serializers.CharField()
+        emails = serializers.ListField(
+            child=serializers.EmailField(), 
+            min_length=1
+        )
+
+    def post(self, request, *args, **kwargs):
+        # Validate input
+        input_serializer = self.InputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+
+        # Extract validated data
+        feedback_id = input_serializer.validated_data["feedback_id"]
+        user_emails = input_serializer.validated_data["emails"]
+        granted_by = request.user
+
+        # Check if feedback exists
+        try:
+            feedback = Feedback.objects.get(id=feedback_id)
+        except Feedback.DoesNotExist:
+            return Response(
+                {"detail": "Feedback not found."},
+                status=http_status.HTTP_404_NOT_FOUND
+            )
+
+        # Retrieve members based on emails
+        users = Member.objects.filter(email__in=user_emails)
+
+        # Validate email list against existing members
+        existing_emails = set(users.values_list("email", flat=True))
+        invalid_emails = set(user_emails) - existing_emails
+        if invalid_emails:
+            return Response(
+                {"detail": f"Emails not found: {', '.join(invalid_emails)}"},
+                status=http_status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create permissions
+        permissions_created = 0
+        for user in users:
+            _, created = PrivateKeyPermission.objects.get_or_create(
+                feedback=feedback,
+                user=user,
+                granted_by=granted_by
+            )
+            if created:
+                permissions_created += 1
+
+        # Return success response
+        return Response(
+            {"message": f"Successfully shared feedback with {permissions_created} users."},
+            status=http_status.HTTP_200_OK
+        )
